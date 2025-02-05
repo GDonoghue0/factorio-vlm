@@ -1,0 +1,10 @@
+{
+  "name": "state-reader",
+  "version": "0.1.0",
+  "title": "State Reader",
+  "author": "geoff",
+  "factorio_version": "2.0",
+  "dependencies": ["base >= 2.0"],
+  "description": "Reads game state for ML training",
+  "file-writing": true
+}
