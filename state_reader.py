@@ -1,8 +1,11 @@
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import json
-import time
-from pathlib import Path
+import json, time, mss, mss.tools, os
+
+STATE_FILE = '../../script-output/factorio_state_changes.json'
+MAX_RETRIES = 5
+RETRY_DELAY = 0.05  # 50ms delay
+
 
 class StateHandler(FileSystemEventHandler):
     def __init__(self):
@@ -10,45 +13,62 @@ class StateHandler(FileSystemEventHandler):
         self.last_state = None
         
     def on_modified(self, event):
-        if not event.is_directory and event.src_path.endswith('factorio_state.json'):
-            # Debounce rapid updates
+        if not event.is_directory and os.path.basename(event.src_path) == os.path.basename(STATE_FILE):
             current_time = time.time()
             if current_time - self.last_processed_time < 0.1:
                 return
             
             self.last_processed_time = current_time
             
+            # for attempt in range(MAX_RETRIES):
+            #     try:
+            #         with open(event.src_path, 'r') as f:
+            #             state = json.load(f)
+            #         break  # Success, exit loop
+            #     except json.JSONDecodeError:
+            #         if attempt < MAX_RETRIES - 1:
+            #             time.sleep(RETRY_DELAY)  # Wait and retry
+            #         else:
+            #             print("Error reading state file after multiple attempts.")
+            #             return
+            #     except Exception as e:
+            #         print(f"Error processing state: {e}")
+            #         return
+
             try:
-                with open(event.src_path, 'r') as f:
+                with open(STATE_FILE, "r") as f:
                     state = json.load(f)
-                    self.process_state(state)
-            except json.JSONDecodeError:
-                print("Error reading state file - might have caught it during writing")
-                return
+                tick = state.get("tick", int(time.time()))
             except Exception as e:
-                print(f"Error processing state: {e}")
-                return
+                tick = int(time.time())
+
+            # Ensure the screencaps directory exists
+            os.makedirs("screencaps", exist_ok=True)
+
+            # Capture screenshot
+            with mss.mss() as sct:
+                monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+                screenshot = sct.grab(monitor)
+                filename = f"screencaps/screenshot_{tick}.png"
+                mss.tools.to_png(screenshot.rgb, screenshot.size, output=filename)
+                print(f"Captured screenshot: {filename}")
     
     def process_state(self, state):
-        # Here's where we'll process the state for our VLM
-        # For now, just print some basic info
         print(f"Tick: {state['tick']}")
         print(f"Player position: {state['player']['position']}")
         print(f"Visible entities: {len(state['visible_entities'])}")
         print("-" * 50)
-        
         self.last_state = state
 
 def main():
-    # Create observer and handler
-    path = "."  # Watch current directory
+    path = os.path.dirname(os.path.abspath(STATE_FILE))
     event_handler = StateHandler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=False)
     observer.start()
 
     try:
-        print("Watching for Factorio state changes...")
+        print(f"Watching {path} for Factorio state changes...")
         while True:
             time.sleep(1)
     except KeyboardInterrupt:

@@ -263,14 +263,14 @@ local function get_player_actions(player)
             active_modules = {},
             grid_stats = {}
         } or nil,
-        cursor_stack = player.cursor_stack and {
+        cursor_stack = player.cursor_stack and player.cursor_stack.valid_for_read and {
             name = player.cursor_stack.name,
             count = player.cursor_stack.count
         } or nil
     }
     
-    -- Get crafting queue
-    if player.crafting_queue then
+    -- Check if player has a character before accessing crafting_queue
+    if player.character and player.crafting_queue then
         for i, item in pairs(player.crafting_queue) do
             table.insert(actions.crafting, {
                 item = item.recipe,
@@ -279,7 +279,7 @@ local function get_player_actions(player)
             })
         end
     end
-    
+
     -- Get equipment if available
     if player.character and player.character.grid then
         local grid = player.character.grid
@@ -292,6 +292,7 @@ local function get_player_actions(player)
             })
         end
     end
+
     
     return actions
 end
@@ -337,9 +338,9 @@ local function get_logistics_state(force, surface)
         storage = {},
         requests = {}
     }
-    
-    -- Get logistics network stats if available
-    if force.logistic_networks then
+
+    -- Ensure that force.logistic_networks and the specific surface index exist
+    if force.logistic_networks and force.logistic_networks[surface.index] then
         for _, network in pairs(force.logistic_networks[surface.index]) do
             table.insert(logistics.networks, {
                 cell_count = network.cell_count,
@@ -349,9 +350,10 @@ local function get_logistics_state(force, surface)
             })
         end
     end
-    
+
     return logistics
 end
+
 
 
 -- Pattern detection for common structures
@@ -525,27 +527,12 @@ script.on_event(defines.events.on_tick, function(event)
         visible_entities = {},
         
         -- Add new state components with surface parameter
+        visible_entities = {},
         automation = get_automation_stats(force, surface),
         logistics = get_logistics_state(force, surface),
         production = get_production_statistics(force, surface),
         research = get_research_state(force),
-        power = get_power_statistics(force, surface)
-        
-        -- Add pollution data
-        pollution = {
-            total = player.surface.get_pollution(player.position)
-            -- Removed undefined pollution_statistics references
-        },
-        
-        -- -- Add evolution factors
-        -- evolution = {
-        --     enemy_evolution = game.forces["enemy"].evolution_factor,
-        --     evolution_factors = {
-        --         time = game.forces["enemy"].evolution_factor_by_time,
-        --         pollution = game.forces["enemy"].evolution_factor_by_pollution,
-        --         kills = game.forces["enemy"].evolution_factor_by_killing_spawners
-        --     }
-        -- }
+        power = get_power_statistics(force, surface),
     }
     
     -- Get inventory contents
@@ -572,6 +559,17 @@ script.on_event(defines.events.on_tick, function(event)
             type = entity.type
         })
     end
+
+    game.take_screenshot{
+        player = player,
+        resolution = {x = 1920, y = 1080},  -- 16:9 aspect ratio
+        zoom = 0.75,
+        path = string.format("state_%d.jpg", event.tick),
+        show_gui = false,
+        show_entity_info = true,
+        anti_alias = false,
+        quality = 80
+    }
     
     -- Get delta and write if there are changes
     local changes = get_state_changes(previous_state, current_state)
