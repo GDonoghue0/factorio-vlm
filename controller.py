@@ -28,38 +28,42 @@ class FactorioController:
 
 
     def test_factorio_commands(self):
-    try:
-        print("\nAttempting RCON connection...")
-        with Client('127.0.0.1', port=25575, passwd='test123') as client:
-            print("Connected successfully!")
-            
-            # Test 1: Basic game command
-            print("\nTest 1: Basic game time command")
-            resp = client.run('/time')
-            print(f"Time response: {resp}")
-            
-            # Test 2: Direct Lua command
-            print("\nTest 2: Direct Lua print")
-            resp = client.run('/c game.print("Testing Lua execution")')
-            print(f"Lua print response: {resp}")
-            
-            # Test 3: List available interfaces
-            print("\nTest 3: List remote interfaces")
-            resp = client.run('/c local interfaces = {} for name,_ in pairs(remote.interfaces) do table.insert(interfaces, name) end game.print(serpent.line(interfaces))')
-            print(f"Available interfaces: {resp}")
-            
-            # Test 4: Check if our mod is loaded
-            print("\nTest 4: Check loaded mods")
-            resp = client.run('/c game.print(serpent.line(game.active_mods))')
-            print(f"Active mods: {resp}")
-            
-            # Test 5: Try to directly move the player
-            print("\nTest 5: Direct player movement")
-            resp = client.run('/c local p = game.players[1] if p then p.walking_state = {walking = true, direction = defines.direction.north} end')
-            print(f"Direct movement response: {resp}")
-            
-    except Exception as e:
-        print(f"RCON test failed: {e}")
+        try:
+            print("\nAttempting RCON connection...")
+            with Client('127.0.0.1', 25575, passwd='test123') as client:
+                print("Connected successfully!")
+                
+                # Test 1: Basic game command
+                print("\nTest 1: Basic game time command")
+                resp = client.run('/time')
+                print(f"Time response: {resp}")
+                
+                # Test 2: Different Lua command formats
+                print("\nTest 2a: Silent command")
+                resp = client.run('/silent-command game.print("Test silent")')
+                print(f"Silent command response: {resp}")
+                
+                print("\nTest 2b: Alternative print")
+                resp = client.run('/silent-command local p = game.print("Test print") return p')
+                print(f"Alternative print response: {resp}")
+                
+                # Test 3: Check game version
+                print("\nTest 3: Game version")
+                resp = client.run('/silent-command return helpers.version')
+                print(f"Game version: {resp}")
+                
+                # Test 4: Get player info
+                print("\nTest 4: Player info")
+                resp = client.run('/silent-command return helpers.table_to_json({name=game.players[1].name, position=game.players[1].position})')
+                print(f"Player info: {resp}")
+                
+                # Test 5: List mods differently
+                print("\nTest 5: Mods list")
+                resp = client.run('/silent-command return helpers.table_to_json(helpers.active_mods)')
+                print(f"Mods list: {resp}")
+                
+        except Exception as e:
+            print(f"RCON test failed: {e}")
 
     def test_rcon_connection(self):
         print("Starting RCON test...")

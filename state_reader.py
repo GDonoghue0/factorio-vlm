@@ -60,12 +60,32 @@ class StateHandler(FileSystemEventHandler):
         print("-" * 50)
         self.last_state = state
 
+async def websocket_handler(websocket, path):
+    observer = Observer()
+    handler = StateHandler(websocket)
+    observer.schedule(handler, ".", recursive=False)
+    observer.start()
+
+    try:
+        async for message in websocket:
+            command = json.loads(message)
+            with open(COMMAND_FILE, "w") as f:
+                json.dump(command, f)
+    finally:
+        observer.stop()
+        observer.join()
+
+
 def main():
     path = os.path.dirname(os.path.abspath(STATE_FILE))
     event_handler = StateHandler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=False)
     observer.start()
+
+    start_server = websockets.serve(websocket_handler, "localhost", 8765)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
 
     try:
         print(f"Watching {path} for Factorio state changes...")

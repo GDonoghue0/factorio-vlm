@@ -580,3 +580,59 @@ script.on_event(defines.events.on_tick, function(event)
     -- Update previous state
     previous_state = current_state
 end)
+
+-- In control.lua
+remote.add_interface("factorio_ai", {
+    test_command = function()
+        game.print("Remote interface is working!")
+        return true
+    end,
+
+    move = function(direction)
+        local player = game.players[1]
+        if not player then return false end
+        
+        -- Set the walking state
+        if direction == "north" then
+            player.walking_state = {walking = true, direction = defines.direction.north}
+        elseif direction == "stop" then
+            player.walking_state = {walking = false}
+        end
+        
+        return true
+    end,
+
+    execute_command = function(command)
+        local player = game.players[1]
+        if not player then return {success=false, error="No player"} end
+
+        
+        if command.action == "move" then
+            -- Implement movement
+            -- We'll need to figure out exact implementation
+            return {success=true}
+            
+        elseif command.action == "build" then
+            -- Implement building
+            local success = player.surface.can_place_entity{
+                name = command.entity,
+                position = command.position,
+                direction = command.direction,
+                force = player.force
+            }
+            
+            if success then
+                player.surface.create_entity{
+                    name = command.entity,
+                    position = command.position,
+                    direction = command.direction,
+                    force = player.force
+                }
+            end
+            
+            return {success=success}
+        end
+        
+        return {success=false, error="Unknown command"}
+    end
+})
