@@ -1,4 +1,5 @@
 local stats = require("stats")
+local input = require("input")
 
 -- Store previous state
 local previous_state = nil
@@ -179,11 +180,11 @@ script.on_event(defines.events.on_tick, function(event)
         
         -- Add new state components with surface parameter
         visible_entities = {},
-        automation = get_automation_stats(force, surface),
-        logistics = get_logistics_state(force, surface),
-        production = get_production_statistics(force, surface),
-        research = get_research_state(force),
-        power = get_power_statistics(force, surface),
+        automation = stats.get_automation_stats(force, surface),
+        logistics = stats.get_logistics_state(force, surface),
+        production = stats.get_production_statistics(force, surface),
+        research = stats.get_research_state(force),
+        power = stats.get_power_statistics(force, surface),
     }
     
     -- Get inventory contents
@@ -231,6 +232,21 @@ script.on_event(defines.events.on_tick, function(event)
     -- Update previous state
     previous_state = current_state
 end)
+
+-- Movement and general inputs
+script.on_event(defines.events.on_player_changed_position, input.track_player_input)
+
+-- Building/mining
+script.on_event(defines.events.on_built_entity, input.track_player_input)
+script.on_event(defines.events.on_player_mined_entity, input.track_player_input)
+
+-- Inventory interactions
+script.on_event(defines.events.on_player_main_inventory_changed, input.track_player_input)
+script.on_event(defines.events.on_player_crafted_item, input.track_player_input)
+
+-- Cursor/selection changes
+script.on_event(defines.events.on_player_selected_area, input.track_player_input)
+script.on_event(defines.events.on_player_cursor_stack_changed, input.track_player_input)
 
 remote.add_interface("factorio_ai", {
     test_command = function()
